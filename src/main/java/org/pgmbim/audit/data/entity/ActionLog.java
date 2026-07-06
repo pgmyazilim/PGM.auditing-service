@@ -1,4 +1,4 @@
-package org.pgmbim.audit.entity;
+package org.pgmbim.audit.data.entity;
 
 import org.pgmbim.das.client.starter.mapper.DasField;
 
@@ -8,7 +8,7 @@ public record ActionLog(
         @DasField("ActionLogId")
         Long id,
 
-        @DasField("RowVersionUtc")
+        @DasField("ModifiedAtUtc")
         Instant version,
 
         @DasField("ActionId")

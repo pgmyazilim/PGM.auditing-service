@@ -9,8 +9,6 @@ import org.pgmbim.audit.application.service.AuditAnalyzeAndPersistService;
 import org.pgmbim.grpc.aaa.audit.AnalyzeAndPersistRequest;
 import org.pgmbim.grpc.aaa.audit.AnalyzeAndPersistResponse;
 import org.pgmbim.grpc.aaa.audit.AuditServiceGrpc;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 

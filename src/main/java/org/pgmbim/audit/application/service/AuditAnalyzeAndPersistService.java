@@ -4,23 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.pgmbim.audit.application.model.AuditPersistenceResult;
-import org.pgmbim.audit.data.entity.Action;
-import org.pgmbim.audit.data.entity.ActionLog;
-import org.pgmbim.audit.data.entity.RecordAudit;
-import org.pgmbim.audit.data.entity.SessionDto;
-import org.pgmbim.audit.data.entity.TrackedTable;
+import org.pgmbim.audit.data.entity.*;
 import org.pgmbim.das.client.starter.mapper.DasDataMapper;
-import org.pgmbim.grpc.aaa.audit.AnalyzeAndPersistRequest;
-import org.pgmbim.grpc.aaa.audit.ErrorDetail;
-import org.pgmbim.grpc.aaa.audit.KeyValue;
+import org.pgmbim.grpc.aaa.audit.*;
 import org.pgmbim.grpc.aaa.audit.OperationType;
-import org.pgmbim.grpc.aaa.audit.Outcome;
-import org.pgmbim.grpc.aaa.audit.RecordChange;
-import org.pgmbim.grpc.das.DataAccessServiceGrpc;
-import org.pgmbim.grpc.das.DataResponse;
-import org.pgmbim.grpc.das.InsertRequest;
-import org.pgmbim.grpc.das.SelectRequest;
-import org.pgmbim.grpc.das.TypedValue;
+import org.pgmbim.grpc.das.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -28,23 +16,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.and;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.eq;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.fieldMap;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.insert;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.ok;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.page;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.select;
-import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.typedInt;
+import static org.pgmbim.das.client.starter.grpc.DasGrpcQueryHelper.*;
 
 @Service
 @RequiredArgsConstructor
@@ -282,8 +257,9 @@ public class AuditAnalyzeAndPersistService {
             String extraInfo
     ) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("RowVersionUtc", now);
+        data.put("ModifiedAtUtc", now);
         data.put("ActionId", action.actionId());
+        toOptionalInt(request.getUserId()).ifPresent(userId -> data.put("ActorUserId", userId));
         if (sessionId != null && sessionId > 0) {
             data.put("SessionId", sessionId);
         }
@@ -430,12 +406,12 @@ public class AuditAnalyzeAndPersistService {
             boolean recordWriteEnabled
     ) {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("RowVersionUtc", now);
+        data.put("ModifiedAtUtc", now);
         data.put("TrackedTableId", trackedTable.id());
         data.put("RecordId", recordChange.getRecordId());
         data.put("OperationType", operationCode(request.getOperationType()));
         data.put("OccurredAtUtc", occurredAtUtc);
-        data.put("OperationLogId", actionLogId);
+        data.put("ActionLogId", actionLogId);
 
         if (actorWriteEnabled) {
             toOptionalInt(request.getUserId()).ifPresent(userId -> data.put("ActorUserId", userId));

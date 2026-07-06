@@ -1,4 +1,4 @@
-package org.pgmbim.audit.entity;
+package org.pgmbim.audit.data.entity;
 
 import org.pgmbim.das.client.starter.mapper.DasField;
 
@@ -9,7 +9,7 @@ public record SessionDto(
         @DasField("SessionId")
         Integer id,
 
-        @DasField("RowVersionUtc")
+        @DasField("ModifiedAtUtc")
         Instant version,
 
         @DasField("UserId")
