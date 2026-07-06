@@ -1,0 +1,399 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+package org.pgmbim.grpc.das;
+
+option java_package = "org.pgmbim.grpc.das";
+
+
+import "google/protobuf/timestamp.proto";
+
+// Data Access Service for database operations via gRPC
+service DataAccessService {
+  // Executes a SELECT query and returns data
+  rpc Select (SelectRequest) returns (DataResponse);
+  // Inserts a new record into a table
+  rpc Insert (InsertRequest) returns (DataResponse);
+  // Updates existing records in a table
+  rpc Update (UpdateRequest) returns (DataResponse);
+  // Deletes records from a table
+  rpc Delete (DeleteRequest) returns (DataResponse);
+  // Executes multiple operations in a single transaction
+  rpc ExecuteBatch (BatchRequest) returns (BatchResponse);
+  // Executes raw SQL queries
+  rpc ExecuteRawSQL (RawQueryRequest) returns (DataResponse);
+  // Calls a stored procedure
+  rpc CallProcedure (ProcedureRequest) returns (ProcedureResponse);
+  // Streams query results in chunks
+  rpc StreamQuery (SelectRequest) returns (stream DataChunk);
+}
+
+// BREAKING (2026-07): UNSPECIFIED=0 added to all enums; all clients must be rebuilt against this
+// proto and deployed together with the server.
+
+// Supported data types for typed values
+enum ValueType {
+  VALUE_TYPE_UNSPECIFIED = 0;
+  STRING = 1;
+  BOOL = 2;
+  INT32 = 3;
+  INT64 = 4;
+  UINT32 = 5;
+  UINT64 = 6;
+  FLOAT = 7;
+  DOUBLE = 8;
+  BYTES = 9;
+  TIMESTAMP = 10;
+  DECIMAL = 11;
+  OBJECT = 12;
+  LIST = 13;
+}
+
+// Represents SQL NULL value
+enum NullValue {
+  NULL_VALUE = 0;
+}
+
+// Represents a list of typed values
+message DataList {
+  repeated TypedValue values = 1;
+}
+
+// Strongly-typed value with type indicator
+message TypedValue {
+  ValueType type = 1;
+  oneof kind {
+    NullValue null_value = 2;
+    bool bool_value = 3;
+    int32 int32_value = 4;
+    int64 int64_value = 5;
+    uint32 uint32_value = 6;
+    uint64 uint64_value = 7;
+    float float_value = 8;
+    double double_value = 9;
+    string string_value = 10;
+    bytes bytes_value = 11;
+    google.protobuf.Timestamp timestamp_value = 12;
+    string decimal_value = 13;
+    FieldMap object_value = 14;
+    DataList list_value = 15;
+  }
+}
+
+// Map of field names to typed values
+message FieldMap {
+  map<string, TypedValue> fields = 1;
+}
+
+// Metadata about a database column
+message ColumnMeta {
+  string name = 1;
+  ValueType type = 2;
+}
+
+// Generic data request (deprecated, use specific request types)
+message DataRequest {
+  int32 module_database_id = 1;
+  OperationType type = 2;
+  string schema = 3;
+  string table = 4;
+  repeated ColumnSelection columns = 5;
+  FilterGroup filter_group = 6;
+  repeated JoinClause joins = 7;
+  repeated AggregateFunction aggregates = 8;
+  repeated string group_by = 9;
+  FilterGroup having = 10;
+  repeated OrderBy order_by = 11;
+  Pagination pagination = 12;
+  FieldMap data = 13;
+  QueryOptions options = 14;
+  bool distinct = 15;
+}
+
+// Request for SELECT queries
+message SelectRequest {
+  int32 module_database_id = 2;
+  string schema = 3;
+  string table = 4;
+  repeated ColumnSelection columns = 5;
+  FilterGroup filter_group = 6;
+  repeated JoinClause joins = 7;
+  repeated AggregateFunction aggregates = 8;
+  repeated string group_by = 9;
+  FilterGroup having = 10;
+  repeated OrderBy order_by = 11;
+  Pagination pagination = 12;
+  QueryOptions options = 13;
+  bool distinct = 14;
+  string table_alias = 15;
+}
+
+// Request for INSERT operations
+message InsertRequest {
+  int32 module_database_id = 2;
+  string schema = 3;
+  string table = 4;
+  FieldMap data = 5;
+  QueryOptions options = 6;
+}
+
+// Request for UPDATE operations
+message UpdateRequest {
+  int32 module_database_id = 2;
+  string schema = 3;
+  string table = 4;
+  FieldMap data = 5;
+  FilterGroup filter_group = 6;
+  QueryOptions options = 7;
+}
+
+// Request for DELETE operations
+message DeleteRequest {
+  int32 module_database_id = 2;
+  string schema = 3;
+  string table = 4;
+  FilterGroup filter_group = 5;
+  QueryOptions options = 6;
+}
+
+// Column selection with optional alias
+message ColumnSelection {
+  string column = 1;
+  string alias = 2;
+}
+
+// Group of filters with logical operator
+message FilterGroup {
+  LogicalOperator operator = 1;
+  repeated Filter filters = 2;
+  repeated FilterGroup nested_groups = 3;
+}
+
+// Individual filter condition
+message Filter {
+  string column = 1;
+  FilterOperator operator = 2;
+  TypedValue value = 3;
+  repeated TypedValue values = 4;
+}
+
+// A single JOIN ON condition (column = column), AND-combined
+message JoinCondition {
+  string left_column = 1;
+  string right_column = 2;
+}
+
+// JOIN clause configuration
+message JoinClause {
+  string schema = 1;
+  string table = 2;
+  JoinType type = 3;
+  string on_left_column = 4 [deprecated = true];
+  string on_right_column = 5 [deprecated = true];
+  string table_alias = 6;
+  repeated JoinCondition on_conditions = 7;
+}
+
+// Aggregate function specification
+message AggregateFunction {
+  AggregateFunctionType function = 1;
+  string column = 2;
+  string alias = 3;
+}
+
+// ORDER BY clause
+message OrderBy {
+  string column = 1;
+  SortDirection direction = 2;
+}
+
+// LIMIT and OFFSET for pagination
+message Pagination {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+// Pagination details returned with paged responses
+message PaginationMeta {
+  int32 total_records = 1;
+  int32 total_pages = 2;
+  int32 current_page = 3;
+  int32 page_size = 4;
+  int32 offset = 5;
+  int32 returned_records = 6;
+}
+
+// Query execution options
+message QueryOptions {
+  int32 timeout_seconds = 1;
+  bool use_cache = 2 [deprecated = true];
+  int32 cache_ttl_seconds = 3 [deprecated = true];
+}
+
+// Request for raw SQL execution
+message RawQueryRequest {
+  int32 module_database_id = 2;
+  string sql_query = 3;
+  map<string, string> parameters = 4 [deprecated = true];
+  QueryOptions options = 5;
+  map<string, TypedValue> typed_parameters = 6;
+}
+
+// Request for stored procedure execution
+message ProcedureRequest {
+  int32 module_database_id = 2;
+  string procedure_name = 3;
+  FieldMap parameters = 4;
+  QueryOptions options = 5;
+}
+
+// Result set from a query
+message ResultSet {
+  repeated FieldMap records = 1;
+  repeated ColumnMeta columns = 2;
+}
+
+// Status of a response
+enum ResponseStatus {
+  RESPONSE_STATUS_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  ERROR = 2;
+}
+
+// Response from stored procedure execution
+message ProcedureResponse {
+  repeated ResultSet result_sets = 1;
+  map<string, string> output_parameters = 2 [deprecated = true];
+  ResponseStatus status = 3;
+  string error_message = 4;
+}
+
+// Request for batch operations
+message BatchRequest {
+  int32 module_database_id = 2;
+  repeated AtomicAction actions = 3;
+  TransactionOptions transaction_options = 4;
+  QueryOptions options = 5;
+}
+
+// Single action in a batch operation
+message AtomicAction {
+  string action_id = 1;
+  OperationType type = 2;
+  string schema = 3;
+  string table = 4;
+  FieldMap data = 5;
+  FilterGroup filter_group = 6;
+  map<string, string> references = 7;
+}
+
+// Transaction configuration
+message TransactionOptions {
+  IsolationLevel isolation_level = 1;
+  int32 timeout_seconds = 2;
+}
+
+// Data returned from an action
+message ActionData {
+  repeated FieldMap records = 1;
+}
+
+// Response from batch execution
+message BatchResponse {
+  map<string, string> generated_ids = 1 [deprecated = true];
+  map<string, int32> affected_rows = 2;
+  map<string, ActionData> data = 3;
+  ResponseStatus status = 4;
+  string error_message = 5;
+  repeated string executed_sqls = 6;
+  map<string, FieldMap> generated_keys = 7;
+}
+
+// Response from data operations
+message DataResponse {
+  repeated FieldMap records = 1;
+  int32 total_records = 2;
+  int32 affected_rows = 3;
+  map<string, TypedValue> generated_keys = 4;
+  ResponseStatus status = 5;
+  string error_message = 6;
+  double execution_time_ms = 7;
+  string executed_sql = 8;
+  PaginationMeta pagination = 9;
+}
+
+// Chunk of data in a streaming response
+message DataChunk {
+  repeated FieldMap records = 1;
+  bool is_last_chunk = 2;
+  repeated ColumnMeta columns = 3;
+}
+
+// Database operation types
+enum OperationType {
+  OPERATION_TYPE_UNSPECIFIED = 0;
+  SELECT = 1;
+  INSERT = 2;
+  UPDATE = 3;
+  DELETE = 4;
+}
+
+// Filter comparison operators
+enum FilterOperator {
+  FILTER_OPERATOR_UNSPECIFIED = 0;
+  EQ = 1;            // Equal
+  NE = 2;            // Not equal
+  GT = 3;            // Greater than
+  GTE = 4;           // Greater than or equal
+  LT = 5;            // Less than
+  LTE = 6;           // Less than or equal
+  LIKE = 7;          // Pattern matching
+  IN = 8;            // In list
+  NOT_IN = 9;        // Not in list
+  IS_NULL = 10;      // Is NULL
+  IS_NOT_NULL = 11;  // Is not NULL
+  BETWEEN = 12;      // Between two values
+}
+
+// Logical operators for combining filters
+enum LogicalOperator {
+  LOGICAL_OPERATOR_UNSPECIFIED = 0;
+  AND = 1;
+  OR = 2;
+}
+
+// SQL JOIN types
+enum JoinType {
+  JOIN_TYPE_UNSPECIFIED = 0;
+  INNER = 1;
+  LEFT = 2;
+  RIGHT = 3;
+  FULL = 4;
+}
+
+// Sort direction
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  ASC = 1;
+  DESC = 2;
+}
+
+// SQL aggregate functions
+enum AggregateFunctionType {
+  AGGREGATE_FUNCTION_TYPE_UNSPECIFIED = 0;
+  COUNT = 1;
+  SUM = 2;
+  AVG = 3;
+  MIN = 4;
+  MAX = 5;
+  COUNT_DISTINCT = 6;
+}
+
+// Transaction isolation levels
+enum IsolationLevel {
+  ISOLATION_LEVEL_UNSPECIFIED = 0;
+  READ_UNCOMMITTED = 1;
+  READ_COMMITTED = 2;
+  REPEATABLE_READ = 3;
+  SERIALIZABLE = 4;
+}

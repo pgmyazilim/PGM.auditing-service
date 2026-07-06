@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package org.pgmbim.grpc.aaa.audit;
+
+option java_multiple_files = true;
+option java_package = "org.pgmbim.grpc.aaa.audit";
+
+service AuditService {
+  rpc AnalyzeAndPersist(AnalyzeAndPersistRequest) returns (AnalyzeAndPersistResponse);
+}
+
+enum OperationType {
+  OPERATION_TYPE_UNSPECIFIED = 0;
+  INSERT = 1;
+  UPDATE = 2;
+  DELETE = 3;
+  SELECT = 4;
+}
+
+enum Outcome {
+  OUTCOME_UNSPECIFIED = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
+}
+
+enum SnapshotFormat {
+  SNAPSHOT_FORMAT_UNSPECIFIED = 0;
+  XML = 1;
+  JSON = 2;
+}
+
+message KeyValue {
+  string key = 1;
+  string value = 2;
+}
+
+message ErrorDetail {
+  string root_cause_class = 1;
+  string public_message = 2;
+  string sql_state = 3;
+  int32 sql_error_code = 4;
+  repeated KeyValue details = 5;
+}
+
+message RecordChange {
+  int32 table_id = 1;
+  string record_id = 2;
+  SnapshotFormat snapshot_format = 3;
+  string snapshot = 4; // XML/JSON string
+  repeated KeyValue extra_info = 5;
+  string table_name = 6;
+}
+
+message AnalyzeAndPersistRequest {
+  string correlation_id = 2;
+  string source_service = 3;
+  string source_method = 4;
+  string action_key = 5;
+  OperationType operation_type = 6;
+  Outcome outcome = 7;
+  string session_key = 8;
+  int64 user_id = 9;
+  int64 executed_ms = 10;
+  repeated KeyValue extra_info = 12;
+  ErrorDetail error = 13;
+  repeated RecordChange records = 14;
+  bool dry_run = 15;
+  string user_note = 16;
+}
+
+message AnalyzeAndPersistResponse {
+  bool operation_history_written = 1;
+  int64 operation_history_id = 2;
+  int32 record_history_written_count = 3;
+  repeated int64 record_history_ids = 4;
+  repeated string warnings = 5;
+}
