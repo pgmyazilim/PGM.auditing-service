@@ -7,4 +7,4 @@ RUN set -eux; \
     [ -n "$jar" ]; \
     mv "$jar" /app/app.jar; \
     find /app -maxdepth 1 -type f -name '*.jar' ! -name 'app.jar' -delete
-CMD ["java","-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5009","-jar","app.jar"]
+CMD ["java","-jar","app.jar"]

@@ -56,6 +56,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
 
             running = true;
             log.info("Audit gRPC server started. port={}", grpcPort);
+            log.info("NEW VERSION");
 
         } catch (Exception e) {
             log.error("Failed to start gRPC server", e);
