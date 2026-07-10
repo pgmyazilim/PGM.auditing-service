@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package org.pgmbim.grpc.aaa.audit;
+
+option java_package = "org.pgmbim.grpc.aaa.audit";
+option java_multiple_files = true;
+
+service VersionService {
+  rpc GetVersion (google.protobuf.Empty) returns (GetVersionResponse);
+}
+
+message GetVersionResponse {
+  string version = 1;
+}

@@ -24,9 +24,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
 
     // gRPC
-    implementation("io.grpc:grpc-netty:1.76.0")
-    implementation("io.grpc:grpc-protobuf:1.76.0")
-    implementation("io.grpc:grpc-stub:1.76.0")
+    implementation(platform("io.grpc:grpc-bom:1.80.0"))
+    implementation("io.grpc:grpc-services")
+    implementation("io.grpc:grpc-netty")
+    implementation("io.grpc:grpc-protobuf")
+    implementation("io.grpc:grpc-stub")
 
     // Protobuf
     implementation("com.google.protobuf:protobuf-java:4.33.0")

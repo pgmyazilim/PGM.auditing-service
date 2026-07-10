@@ -2,6 +2,7 @@ package org.pgmbim.audit.startup;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import org.pgmbim.audit.grpc.AuditGrpcServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
             server = ServerBuilder
                     .forPort(grpcPort)
                     .addService(auditGrpcService)
+                    .addService(ProtoReflectionServiceV1.newInstance())
                     .build()
                     .start();
 
@@ -56,7 +58,6 @@ public class GrpcServerLifecycle implements SmartLifecycle {
 
             running = true;
             log.info("Audit gRPC server started. port={}", grpcPort);
-            log.info("NEW VERSION");
 
         } catch (Exception e) {
             log.error("Failed to start gRPC server", e);
