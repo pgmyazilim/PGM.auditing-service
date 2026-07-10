@@ -4,6 +4,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import org.pgmbim.audit.grpc.AuditGrpcServiceImpl;
+import org.pgmbim.audit.grpc.VersionServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,15 +20,17 @@ public class GrpcServerLifecycle implements SmartLifecycle {
     private Thread keepAliveThread;
     private final int grpcPort;
     private final AuditGrpcServiceImpl auditGrpcService;
+    private final VersionServiceImpl  versionService;
 
     private volatile boolean running = false;
 
     public GrpcServerLifecycle(
             @Value("${server.port:50054}") int grpcPort,
-            AuditGrpcServiceImpl auditGrpcService
+            AuditGrpcServiceImpl auditGrpcService, VersionServiceImpl versionService
     ) {
         this.grpcPort = grpcPort;
         this.auditGrpcService = auditGrpcService;
+        this.versionService = versionService;
     }
 
     @Override
@@ -37,6 +40,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
             server = ServerBuilder
                     .forPort(grpcPort)
                     .addService(auditGrpcService)
+                    .addService(versionService)
                     .addService(ProtoReflectionServiceV1.newInstance())
                     .build()
                     .start();
