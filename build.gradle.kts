@@ -66,3 +66,59 @@ protobuf {
         }
     }
 }
+
+// --- Docker image build & push -------------------------------------------------
+// Registries: default (dev) vs production. Override the tag/repo with -PdockerImage=...
+val devRegistry = "10.99.100.116"
+val prodRegistry = "10.99.100.142"
+val imagePath = "5000/auditing-service:latest"
+
+fun dockerImageFor(registry: String) =
+    (findProperty("dockerImage") as String?) ?: "$registry:$imagePath"
+
+// deployImage: uses the production registry when -Production is passed, else dev.
+val deployIsProd = hasProperty("production")
+val deployImageName = dockerImageFor(if (deployIsProd) prodRegistry else devRegistry)
+
+val dockerBuild by tasks.registering(Exec::class) {
+    group = "docker"
+    description = "Builds the Docker image ($deployImageName)."
+    dependsOn(tasks.named("bootJar"))
+    commandLine("docker", "build", "-t", deployImageName, ".")
+}
+
+val dockerPush by tasks.registering(Exec::class) {
+    group = "docker"
+    description = "Pushes the Docker image ($deployImageName) to the registry."
+    dependsOn(dockerBuild)
+    commandLine("docker", "push", deployImageName)
+}
+
+tasks.register("deployImage") {
+    group = "docker"
+    description = "bootJar -> docker build -> docker push. Pass -Production for $prodRegistry."
+    dependsOn(dockerPush)
+}
+
+// Dedicated production task (no argument needed) -> always the production registry.
+val prodImageName = dockerImageFor(prodRegistry)
+
+val dockerBuildProd by tasks.registering(Exec::class) {
+    group = "docker"
+    description = "Builds the production Docker image ($prodImageName)."
+    dependsOn(tasks.named("bootJar"))
+    commandLine("docker", "build", "-t", prodImageName, ".")
+}
+
+val dockerPushProd by tasks.registering(Exec::class) {
+    group = "docker"
+    description = "Pushes the production Docker image ($prodImageName) to the registry."
+    dependsOn(dockerBuildProd)
+    commandLine("docker", "push", prodImageName)
+}
+
+tasks.register("deployImageProduction") {
+    group = "docker"
+    description = "bootJar -> docker build -> docker push against the production registry ($prodRegistry)."
+    dependsOn(dockerPushProd)
+}
