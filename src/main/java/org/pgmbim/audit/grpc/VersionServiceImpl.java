@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class VersionServiceImpl extends VersionServiceGrpc.VersionServiceImplBase {
 
-    private static final String VERSION = "aba2d0591d2e5f91473b168ea40f193c599b53a0"; //Son commit revison number.
+    private static final String VERSION = "c225708faad3ac492dee860642d52279e9701975"; //Son commit revison number.
 
     @Override
     public void getVersion(Empty request, StreamObserver<GetVersionResponse> responseObserver) {
