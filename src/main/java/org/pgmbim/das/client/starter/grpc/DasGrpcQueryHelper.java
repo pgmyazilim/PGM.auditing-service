@@ -15,6 +15,7 @@ import org.pgmbim.grpc.das.FilterGroup;
 import org.pgmbim.grpc.das.FilterOperator;
 import org.pgmbim.grpc.das.InsertRequest;
 import org.pgmbim.grpc.das.JoinClause;
+import org.pgmbim.grpc.das.JoinCondition;
 import org.pgmbim.grpc.das.JoinType;
 import org.pgmbim.grpc.das.LogicalOperator;
 import org.pgmbim.grpc.das.NullValue;
@@ -96,34 +97,6 @@ public final class DasGrpcQueryHelper {
             throw new IllegalArgumentException(response.getErrorMessage());
         }
         return response.getStatus() == ResponseStatus.SUCCESS;
-    }
-
-    public static boolean hasGeneratedIds(BatchResponse response) {
-        return response != null && response.getGeneratedIdsCount() > 0;
-    }
-
-    public static Map<String, String> generatedIds(BatchResponse response) {
-        if (response == null || response.getGeneratedIdsCount() == 0) {
-            return Map.of();
-        }
-        return response.getGeneratedIdsMap();
-    }
-
-    public static String generatedId(BatchResponse response, String actionId) {
-        if (response == null || actionId == null || actionId.isBlank() || !response.containsGeneratedIds(actionId)) {
-            return null;
-        }
-        return response.getGeneratedIdsOrThrow(actionId);
-    }
-
-    public static Integer generatedIdAsInt(BatchResponse response, String actionId) {
-        String value = generatedId(response, actionId);
-        return value == null ? null : Integer.valueOf(value);
-    }
-
-    public static Long generatedIdAsLong(BatchResponse response, String actionId) {
-        String value = generatedId(response, actionId);
-        return value == null ? null : Long.valueOf(value);
     }
 
     public static boolean ok(ProcedureResponse response) {
@@ -575,7 +548,10 @@ public final class DasGrpcQueryHelper {
 
     public static JoinClause join(String schema, String table, JoinType type, String onLeftColumn, String onRightColumn, String tableAlias) {
         JoinClause.Builder b = JoinClause.newBuilder().setSchema(schema).setTable(table).setType(type)
-                .setOnLeftColumn(onLeftColumn).setOnRightColumn(onRightColumn);
+                .addOnConditions(JoinCondition.newBuilder()
+                        .setLeftColumn(onLeftColumn)
+                        .setRightColumn(onRightColumn)
+                        .build());
         if (tableAlias != null && !tableAlias.isBlank()) {
             b.setTableAlias(tableAlias);
         }
