@@ -938,7 +938,6 @@ public final class DasGrpcQueryHelper {
         return builder;
     }
 
-    @SuppressWarnings("deprecation")
     private static RawQueryRequest.Builder rawSql(Integer moduleDatabaseId, String sqlQuery) {
         RawQueryRequest.Builder builder = RawQueryRequest.newBuilder().setSqlQuery(sqlQuery);
         if (moduleDatabaseId != null) {
