@@ -46,6 +46,7 @@ dependencies {
 
 springBoot {
     mainClass.set("org.pgmbim.audit.Application")
+    buildInfo()
 }
 
 
