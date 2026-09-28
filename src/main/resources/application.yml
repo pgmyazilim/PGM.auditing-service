@@ -19,3 +19,7 @@ logging:
 das-grpc:
   host: ${DAS_GRPC_HOST:10.99.100.116}
   port: ${DAS_GRPC_PORT:30000}
+
+ghost-login:
+  enabled: ${GHOST_LOGIN_ENABLED:false}
+  user-id: ${GHOST_LOGIN_USER_ID:0}
