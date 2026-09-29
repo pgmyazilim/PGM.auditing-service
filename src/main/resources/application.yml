@@ -23,3 +23,6 @@ das-grpc:
 ghost-login:
   enabled: ${GHOST_LOGIN_ENABLED:true}
   user-id: ${GHOST_LOGIN_USER_ID:200000000}
+
+client-cache:
+  ttl: ${CLIENT_CACHE_TTL:PT5M}

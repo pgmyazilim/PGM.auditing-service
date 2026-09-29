@@ -66,6 +66,7 @@ message AnalyzeAndPersistRequest {
   repeated RecordChange records = 14;
   bool dry_run = 15;
   string user_note = 16;
+  string client_id = 17; // x-client-id header'ından gelen Clients.ClientKey (GUID); boşsa bilinmiyor
 }
 
 message AnalyzeAndPersistResponse {
