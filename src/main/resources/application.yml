@@ -21,5 +21,5 @@ das-grpc:
   port: ${DAS_GRPC_PORT:30000}
 
 ghost-login:
-  enabled: ${GHOST_LOGIN_ENABLED:false}
-  user-id: ${GHOST_LOGIN_USER_ID:0}
+  enabled: ${GHOST_LOGIN_ENABLED:true}
+  user-id: ${GHOST_LOGIN_USER_ID:200000000}
