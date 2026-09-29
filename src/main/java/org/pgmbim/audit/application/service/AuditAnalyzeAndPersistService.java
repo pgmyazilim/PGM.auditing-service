@@ -216,7 +216,11 @@ public class AuditAnalyzeAndPersistService {
         ClientResolver.Resolution resolution = clientResolver.resolve(request.getClientId());
         if (resolution.warning() != null) {
             warnings.add(resolution.warning());
-            log.warn(resolution.warning());
+            if (resolution.fresh()) {
+                log.warn("{}", resolution.warning());
+            } else {
+                log.debug("{}", resolution.warning());
+            }
         }
         return resolution.clientId();
     }

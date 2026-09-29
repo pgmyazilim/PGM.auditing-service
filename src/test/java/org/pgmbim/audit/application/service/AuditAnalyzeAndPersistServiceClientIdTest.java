@@ -65,7 +65,7 @@ class AuditAnalyzeAndPersistServiceClientIdTest {
 
     @Test
     void resolvedClient_isWrittenToActionLog() {
-        when(clientResolver.resolve(KEY)).thenReturn(new ClientResolver.Resolution(7, null));
+        when(clientResolver.resolve(KEY)).thenReturn(new ClientResolver.Resolution(7, null, true));
 
         AuditPersistenceResult result = service.analyzeAndPersist(request(KEY));
 
@@ -78,7 +78,7 @@ class AuditAnalyzeAndPersistServiceClientIdTest {
     @Test
     void unresolvedClient_logIsStillWrittenWithoutClientIdAndWarns() {
         when(clientResolver.resolve(KEY))
-                .thenReturn(new ClientResolver.Resolution(null, "Client not found. client_id=" + KEY));
+                .thenReturn(new ClientResolver.Resolution(null, "Client not found. client_id=" + KEY, true));
 
         AuditPersistenceResult result = service.analyzeAndPersist(request(KEY));
 
@@ -89,7 +89,7 @@ class AuditAnalyzeAndPersistServiceClientIdTest {
 
     @Test
     void emptyClientId_logIsWrittenWithoutClientIdAndNoWarning() {
-        when(clientResolver.resolve("")).thenReturn(new ClientResolver.Resolution(null, null));
+        when(clientResolver.resolve("")).thenReturn(new ClientResolver.Resolution(null, null, true));
 
         AuditPersistenceResult result = service.analyzeAndPersist(request(""));
 

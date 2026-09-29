@@ -10,11 +10,13 @@ import org.pgmbim.grpc.das.DataResponse;
 import org.pgmbim.grpc.das.ResponseStatus;
 import org.pgmbim.grpc.das.SelectRequest;
 
+import java.lang.reflect.Field;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -117,6 +119,38 @@ class ClientResolverTest {
         assertTrue(failed.warning().contains("Client lookup failed"));
         assertEquals(7, retried.clientId());
         verify(das, times(2)).select(any(SelectRequest.class));
+    }
+
+    @Test
+    void expiredEntries_arePurgedWhenCacheExceedsCap() throws Exception {
+        when(das.select(any(SelectRequest.class))).thenReturn(OK);
+        when(mapper.mapFirstOptional(any(DataResponse.class), eq(Client.class))).thenReturn(Optional.empty());
+
+        String key1 = "11111111-1111-1111-1111-111111111111";
+        String key2 = "22222222-2222-2222-2222-222222222222";
+        String key3 = "33333333-3333-3333-3333-333333333333";
+        ClientResolver bounded = new ClientResolver(das, mapper, new ClientCacheProps(Duration.ofMinutes(5)), clock, 2);
+
+        bounded.resolve(key1);
+        bounded.resolve(key2);
+        assertEquals(2, cacheSize(bounded));
+
+        clock.advance(Duration.ofMinutes(5).plusSeconds(1));
+        bounded.resolve(key3);
+
+        // key1/key2 are now expired; inserting key3 pushed the cache past maxEntries=2,
+        // so the expired entries must have been purged, leaving only key3.
+        assertEquals(1, cacheSize(bounded));
+        verify(das, times(3)).select(any(SelectRequest.class));
+
+        bounded.resolve(key1);
+        verify(das, times(4)).select(any(SelectRequest.class));
+    }
+
+    private static int cacheSize(ClientResolver resolver) throws Exception {
+        Field field = ClientResolver.class.getDeclaredField("cache");
+        field.setAccessible(true);
+        return ((Map<?, ?>) field.get(resolver)).size();
     }
 
     private static final class MutableClock extends Clock {

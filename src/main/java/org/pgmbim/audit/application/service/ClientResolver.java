@@ -33,28 +33,40 @@ public class ClientResolver {
     private static final String CLIENTS_TABLE = "Clients";
     private static final Pattern GUID = Pattern.compile(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final int MAX_ENTRIES = 10_000;
+    private static final int MAX_ECHOED_LENGTH = 64;
 
     private final DataAccessServiceGrpc.DataAccessServiceBlockingStub dasClient;
     private final DasDataMapper dataMapper;
     private final Duration ttl;
     private final Clock clock;
+    private final int maxEntries;
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
     @Autowired
     public ClientResolver(DataAccessServiceGrpc.DataAccessServiceBlockingStub dasClient,
                           DasDataMapper dataMapper,
                           ClientCacheProps props) {
-        this(dasClient, dataMapper, props, Clock.systemUTC());
+        this(dasClient, dataMapper, props, Clock.systemUTC(), MAX_ENTRIES);
     }
 
     ClientResolver(DataAccessServiceGrpc.DataAccessServiceBlockingStub dasClient,
                    DasDataMapper dataMapper,
                    ClientCacheProps props,
                    Clock clock) {
+        this(dasClient, dataMapper, props, clock, MAX_ENTRIES);
+    }
+
+    ClientResolver(DataAccessServiceGrpc.DataAccessServiceBlockingStub dasClient,
+                   DasDataMapper dataMapper,
+                   ClientCacheProps props,
+                   Clock clock,
+                   int maxEntries) {
         this.dasClient = dasClient;
         this.dataMapper = dataMapper;
         this.ttl = props.ttl();
         this.clock = clock;
+        this.maxEntries = maxEntries;
     }
 
     public Resolution resolve(String clientKey) {
@@ -63,27 +75,37 @@ public class ClientResolver {
         }
         String trimmed = clientKey.trim();
         if (!GUID.matcher(trimmed).matches()) {
-            return Resolution.unresolved("Invalid client_id format. client_id=" + trimmed);
+            return Resolution.unresolved("Invalid client_id format. client_id=" + truncate(trimmed), true);
         }
 
         String key = trimmed.toLowerCase(Locale.ROOT);
         Instant now = clock.instant();
         CacheEntry cached = cache.get(key);
         if (cached != null && cached.expiresAt().isAfter(now)) {
-            return toResolution(key, cached.clientId());
+            return toResolution(key, cached.clientId(), false);
         }
 
         Optional<Integer> found;
         try {
             found = lookup(key);
         } catch (RuntimeException ex) {
-            log.warn("Client lookup failed. clientKey={}", key, ex);
-            return Resolution.unresolved("Client lookup failed. client_id=" + key);
+            log.debug("Client lookup failed. clientKey={}", key, ex);
+            return Resolution.unresolved("Client lookup failed. client_id=" + truncate(key), true);
         }
 
         Integer clientId = found.orElse(null);
+        storeInCache(key, clientId, now);
+        return toResolution(key, clientId, true);
+    }
+
+    private void storeInCache(String key, Integer clientId, Instant now) {
         cache.put(key, new CacheEntry(clientId, now.plus(ttl)));
-        return toResolution(key, clientId);
+        if (cache.size() > maxEntries) {
+            cache.values().removeIf(entry -> !entry.expiresAt().isAfter(now));
+            if (cache.size() > maxEntries) {
+                cache.clear();
+            }
+        }
     }
 
     private Optional<Integer> lookup(String key) {
@@ -97,18 +119,29 @@ public class ClientResolver {
         return dataMapper.mapFirstOptional(response, Client.class).map(Client::id);
     }
 
-    private Resolution toResolution(String key, Integer clientId) {
+    private Resolution toResolution(String key, Integer clientId, boolean fresh) {
         if (clientId == null) {
-            return Resolution.unresolved("Client not found. client_id=" + key);
+            return Resolution.unresolved("Client not found. client_id=" + truncate(key), fresh);
         }
-        return new Resolution(clientId, null);
+        return Resolution.resolved(clientId, fresh);
     }
 
-    public record Resolution(Integer clientId, String warning) {
-        static final Resolution NONE = new Resolution(null, null);
+    private static String truncate(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= MAX_ECHOED_LENGTH ? value : value.substring(0, MAX_ECHOED_LENGTH);
+    }
 
-        static Resolution unresolved(String warning) {
-            return new Resolution(null, warning);
+    public record Resolution(Integer clientId, String warning, boolean fresh) {
+        static final Resolution NONE = new Resolution(null, null, true);
+
+        static Resolution unresolved(String warning, boolean fresh) {
+            return new Resolution(null, warning, fresh);
+        }
+
+        static Resolution resolved(Integer clientId, boolean fresh) {
+            return new Resolution(clientId, null, fresh);
         }
     }
 
