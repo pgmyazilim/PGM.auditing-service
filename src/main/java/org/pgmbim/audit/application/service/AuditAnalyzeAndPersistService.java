@@ -42,6 +42,7 @@ public class AuditAnalyzeAndPersistService {
     private final DasDataMapper dataMapper;
     private final ObjectMapper objectMapper;
     private final org.pgmbim.audit.config.GhostLoginProps ghostLoginProps;
+    private final ClientResolver clientResolver;
 
 
     public AuditPersistenceResult analyzeAndPersist(AnalyzeAndPersistRequest request) {
@@ -78,7 +79,8 @@ public class AuditAnalyzeAndPersistService {
         Instant now = Instant.now();
         Instant occurredAtUtc = computeOccurredAt(now, request.getExecutedMs());
         String actionExtraInfo = buildActionExtraInfo(request);
-        Long actionLogId = insertActionLog(action, request, sessionContext.sessionId(), now, occurredAtUtc, actionExtraInfo);
+        Integer clientId = resolveClientId(request, warnings);
+        Long actionLogId = insertActionLog(action, request, sessionContext.sessionId(), clientId, now, occurredAtUtc, actionExtraInfo);
 
         if (request.getOutcome() != Outcome.SUCCESS) {
             log.warn("Action log id: {}, actionKey: {}, outcome: {}, error: {}", actionLogId, request.getActionKey(), request.getOutcome(), request.getError());
@@ -210,6 +212,15 @@ public class AuditAnalyzeAndPersistService {
         return false;
     }
 
+    private Integer resolveClientId(AnalyzeAndPersistRequest request, List<String> warnings) {
+        ClientResolver.Resolution resolution = clientResolver.resolve(request.getClientId());
+        if (resolution.warning() != null) {
+            warnings.add(resolution.warning());
+            log.warn(resolution.warning());
+        }
+        return resolution.clientId();
+    }
+
     private Instant computeOccurredAt(Instant now, long executedMs) {
         if (executedMs <= 0) {
             return now;
@@ -259,6 +270,7 @@ public class AuditAnalyzeAndPersistService {
             Action action,
             AnalyzeAndPersistRequest request,
             Long sessionId,
+            Integer clientId,
             Instant now,
             Instant occurredAtUtc,
             String extraInfo
@@ -269,6 +281,9 @@ public class AuditAnalyzeAndPersistService {
         toOptionalInt(request.getUserId()).ifPresent(userId -> data.put("ActorUserId", userId));
         if (sessionId != null && sessionId > 0) {
             data.put("SessionId", sessionId);
+        }
+        if (clientId != null) {
+            data.put("ClientId", clientId);
         }
         data.put("OccurredAtUtc", occurredAtUtc);
         data.put("IsSuccess", request.getOutcome() == Outcome.SUCCESS);
