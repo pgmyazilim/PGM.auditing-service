@@ -234,7 +234,12 @@ public class AuditAnalyzeAndPersistService {
 
     private String buildActionExtraInfo(AnalyzeAndPersistRequest request) {
         if (request.getOutcome() == Outcome.FAILURE) {
-            return toJson(Map.of(ERROR_KEY, buildErrorMessage(request.getError())));
+            // err_msg önce gelir ve istekteki extra_info (ör. oturumsuz denetimlerde "ip") yanına eklenir;
+            // aynı anahtarlı bir istek girdisi gerçek hata mesajını ezemez.
+            Map<String, String> failureInfo = new LinkedHashMap<>();
+            failureInfo.put(ERROR_KEY, buildErrorMessage(request.getError()));
+            keyValueListToMap(request.getExtraInfoList()).forEach(failureInfo::putIfAbsent);
+            return toJson(failureInfo);
         }
         return toJson(keyValueListToMap(request.getExtraInfoList()));
     }
