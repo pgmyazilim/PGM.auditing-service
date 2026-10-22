@@ -6,7 +6,7 @@ server:
   port: 9090
 
 database:
-  id: 7
+  id: ${AAA_DATABASE_ID:7}
   schema: aaa
 
 logging:
