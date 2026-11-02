@@ -2,6 +2,8 @@ package org.pgmbim.audit.startup;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
+import io.grpc.protobuf.services.HealthStatusManager;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import org.pgmbim.audit.grpc.AuditGrpcServiceImpl;
 import org.pgmbim.audit.grpc.VersionServiceImpl;
@@ -15,6 +17,9 @@ import org.springframework.stereotype.Component;
 public class GrpcServerLifecycle implements SmartLifecycle {
 
     private static final Logger log = LoggerFactory.getLogger(GrpcServerLifecycle.class);
+
+    // Answers the kubelet's gRPC probes; registered without interceptors because probes carry no metadata.
+    private final HealthStatusManager health = new HealthStatusManager();
 
     private Server server;
     private Thread keepAliveThread;
@@ -40,6 +45,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
             server = ServerBuilder
                     .forPort(grpcPort)
                     .addService(auditGrpcService)
+                    .addService(health.getHealthService())
                     .addService(versionService)
                     .addService(ProtoReflectionServiceV1.newInstance())
                     .build()
@@ -60,6 +66,7 @@ public class GrpcServerLifecycle implements SmartLifecycle {
             keepAliveThread.setDaemon(false);
             keepAliveThread.start();
 
+            health.setStatus("", ServingStatus.SERVING);
             running = true;
             log.info("Audit gRPC server started. port={}", grpcPort);
 
@@ -71,6 +78,8 @@ public class GrpcServerLifecycle implements SmartLifecycle {
 
     @Override
     public void stop() {
+        // Report NOT_SERVING as soon as shutdown begins; the status cannot change afterwards.
+        health.enterTerminalState();
         if (server != null) {
             log.info("Stopping gRPC server");
             server.shutdownNow();
