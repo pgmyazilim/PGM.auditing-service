@@ -5,10 +5,6 @@ spring:
 server:
   port: 9090
 
-database:
-  id: ${AAA_DATABASE_ID:7}
-  schema: aaa
-
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] correlation_id=%X{correlation_id} service_method=%X{service_method} source_service=%X{source_service} user_id=%X{user_id} session_key=%X{session_key} %logger{36} - %msg%n"
